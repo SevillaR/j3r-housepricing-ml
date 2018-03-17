@@ -1,4 +1,4 @@
-libraries <- c('ggplot2', 'dplyr', 'tidyr', 'skimr', 'caret', 'xgboost')
+libraries <- c('ggplot2', 'dplyr', 'tidyr', 'skimr', 'caret', 'xgboost', 'readr')
 
 for (lib in libraries) {
   # if (!lib %in% installed.packages()) install.packages(lib)
