@@ -122,11 +122,94 @@ as.data.frame(train) %>% group_by(Neighborhood) %>% tally() %>% arrange(desc(n))
 
 #### xgboost
 install.packages("xgboost")
+install.packages("Matrix")
+
 library("xgboost")
+library("readr")
+library(caret)
+library("Matrix")
+library("data.table")
+
+train <- read_csv("./data/train.csv")
+setDT(train)
+train[,(cat_var) := lapply(.SD, as.factor), .SDcols = cat_var]
+train <- as.data.frame(train)
+
+test <- read_csv("./data/test.csv")
+setDT(test)
+test[,(cat_var) := lapply(.SD, as.factor), .SDcols = cat_var]
+test <- as.data.frame(test)
+
+
+
+param <- list(objective = "reg:linear",
+              eval_metric = 'rmse',
+              max.depth =5,
+              eta = 0.2,
+              subsample = 0.7,
+              colsample_bytree = 0.5,
+              nthread = 8,
+              verbose = 1)
+
+sparse_matrix <- sparse.model.matrix( ~ ., data = train[,-81])
 
 
 
 
 
+
+library(xgboost) 
+library(Matrix) 
+library(data.table)
+rm(list=ls())
+train <-fread("./data/train.csv", colClasses=list(character=c(7,73,75))) 
+test <-fread("./data/test.csv", colClasses=list(character=c(7,73,75)))
+
+test$SalePrice <- NA
+all <- rbindlist(list(train, test), use.names = T)
+
+names(all) <- make.names(names(all))
+features <- setdiff(colnames(all), c("Id", "SalePrice"))
+
+for (f in features) {
+  if (any(is.na(all[[f]]))) 
+    if (is.character(all[[f]])){ 
+      all[[f]][is.na(all[[f]])] <- "Others"
+    }else{
+      all[[f]][is.na(all[[f]])] <- -999  
+    }
+}
+
+all[, MSSubClass:=paste("Subclass", MSSubClass, sep = "_")]
+
+cat_var <-names(all)[which(sapply(all,is.character))] 
+cat_var <-c(cat_var,'BedroomAbvGr', 'HalfBath', 'KitchenAbvGr','BsmtFullBath', 'BsmtHalfBath')
+
+all[,(cat_var) := lapply(.SD, as.factor), .SDcols = cat_var]
+
+train <- all[!is.na(SalePrice)]
+test <- all[is.na(SalePrice)]
+
+test[, SalePrice:=NULL]
+test_ids <- test$Id
+train[,Id:=NULL]; test[,Id:=NULL]
+
+train_Matrix <- sparse.model.matrix(SalePrice~.-1, data = train)
+testMatrix  <-  sparse.model.matrix(~.-1, data = test)
+
+
+dtrain <- xgb.DMatrix(train_Matrix[,-81], label = train_Matrix[,81])				
+
+# dvalidation <- xgb.DMatrix(as.matrix(validation), label = as.matrix(label.validation))
+
+watchlist <- list(eval = dtrain)
+
+xgb <- xgb.train(param, 
+                       data = dtrain,
+                       watchlist,
+                       nrounds = 200,
+                       maximize = FALSE,
+                       early_stopping_rounds = 5,
+                       print_every_n = 5)
 
 
