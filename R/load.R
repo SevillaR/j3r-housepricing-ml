@@ -13,4 +13,4 @@ train <- read_csv("./data/train.csv")
 str(test)
 skim(test)
 
-mode(test[1, ])
+which(str(test) == 'character' )
