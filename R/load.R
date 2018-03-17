@@ -142,14 +142,7 @@ test <- as.data.frame(test)
 
 
 
-param <- list(objective = "reg:linear",
-              eval_metric = 'rmse',
-              max.depth =5,
-              eta = 0.2,
-              subsample = 0.7,
-              colsample_bytree = 0.5,
-              nthread = 8,
-              verbose = 1)
+
 
 sparse_matrix <- sparse.model.matrix( ~ ., data = train[,-81])
 
@@ -198,18 +191,37 @@ train_Matrix <- sparse.model.matrix(SalePrice~.-1, data = train)
 testMatrix  <-  sparse.model.matrix(~.-1, data = test)
 
 
-dtrain <- xgb.DMatrix(train_Matrix[,-81], label = train_Matrix[,81])				
+smp_size <- floor(0.8 * nrow(train_Matrix)) ## set the seed to make your partition reproductible 
+set.seed(123) 
+train_ind <- sample(seq_len(nrow(train_Matrix)), size = smp_size) 
+trainVal <- train_Matrix[train_ind, ] 
+validacion <- train_Matrix[-train_ind, ]
 
-# dvalidation <- xgb.DMatrix(as.matrix(validation), label = as.matrix(label.validation))
 
-watchlist <- list(eval = dtrain)
+dtrain <- xgb.DMatrix(trainVal[,-81], label = trainVal[,81])				
+dValidacion <- xgb.DMatrix(validacion[,-81], label = validacion[,81])				
+
+watchlist <- list(eval = dValidacion, train = dtrain)
+
+
+param <- list(objective = "reg:linear",
+              eval_metric = 'rmse',
+              max.depth = 3,
+              eta = 0.01,
+              subsample = 1,
+              colsample_bytree = 1,
+              nthread = 8,
+              verbose = 1)
 
 xgb <- xgb.train(param, 
                        data = dtrain,
                        watchlist,
-                       nrounds = 200,
+                       nrounds = 2000,
                        maximize = FALSE,
                        early_stopping_rounds = 5,
-                       print_every_n = 5)
+                       print_every_n = 50
+                  )
+
+
 
 
