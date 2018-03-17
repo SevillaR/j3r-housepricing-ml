@@ -14,3 +14,13 @@ str(test)
 skim(test)
 
 which(str(test) == 'character' )
+
+numericCols <- sapply(test, is.numeric)
+categoricalCols <- sapply(test, is.character)
+
+colnames(test[numericCols])
+colnames(test[categoricalCols])
+
+
+
+
