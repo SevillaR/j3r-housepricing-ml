@@ -185,21 +185,25 @@ test <- all[is.na(SalePrice)]
 
 test[, SalePrice:=NULL]
 test_ids <- test$Id
-train[,Id:=NULL]; test[,Id:=NULL]
+train[,Id:=NULL]; 
+test[,Id:=NULL]
 
-train_Matrix <- sparse.model.matrix(SalePrice~.-1, data = train)
-testMatrix  <-  sparse.model.matrix(~.-1, data = test)
+smp_size <- floor(0.8 * nrow(train)) ## set the seed to make your partition reproductible 
 
-
-smp_size <- floor(0.8 * nrow(train_Matrix)) ## set the seed to make your partition reproductible 
 set.seed(123) 
-train_ind <- sample(seq_len(nrow(train_Matrix)), size = smp_size) 
-trainVal <- train_Matrix[train_ind, ] 
-validacion <- train_Matrix[-train_ind, ]
+train_ind <- sample(seq_len(nrow(train)), size = smp_size) 
+trainVal <- train[train_ind, ] 
+validacion <- train[-train_ind, ]
 
 
-dtrain <- xgb.DMatrix(trainVal[,-81], label = trainVal[,81])				
-dValidacion <- xgb.DMatrix(validacion[,-81], label = validacion[,81])				
+train_Matrix <- sparse.model.matrix(SalePrice~., data = trainVal)
+testMatrix  <-  sparse.model.matrix(~., data = test)
+validacionMatrix <- sparse.model.matrix(SalePrice~., data = validacion)
+
+
+
+dtrain <- xgb.DMatrix(train_Matrix[,-80], label = train_Matrix[,80])				
+dValidacion <- xgb.DMatrix(validacionMatrix[,-80], label = validacionMatrix[,80])				
 
 watchlist <- list(eval = dValidacion, train = dtrain)
 
@@ -222,6 +226,15 @@ xgb <- xgb.train(param,
                        print_every_n = 50
                   )
 
+ 
 
+dTest <- xgb.DMatrix(testMatrix[,-80])				
+
+result <- predict(xgb, dTest)
+View(data.frame(res=result))
+
+
+mat <- xgb.importance (feature_names = colnames(dtrain),model = xgb)
+xgb.plot.importance (importance_matrix = mat[1:20]) 
 
 
