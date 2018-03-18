@@ -220,7 +220,7 @@ param <- list(objective = "reg:linear",
                   eval_metric = 'rmse',
                   max.depth =10,
                   eta = 0.01,
-                  subsample = 1,
+                  subsample = 0.9,
                   colsample_bytree = 0.5,
                   nthread = 10,
                   verbose = 1)
@@ -233,6 +233,10 @@ xgb.model <- xgb.train(param, data = train_Data, watchlist, nrounds = 10000,
                            maximize = FALSE,
                            early_stopping_rounds = 5,
                            print_every_n = 50)
+
+importance_matrix <- xgb.importance(colnames(train_Data), model = xgb.model)
+
+xgb.plot.importance(importance_matrix[1:20,], rel_to_first = TRUE, xlab = "Relative importance")
 
 ```
 Then, the parameter can be selected by the random process. Since the process is relatively boring, I just skip it in RMarkdown file and use the optimal parameters 
