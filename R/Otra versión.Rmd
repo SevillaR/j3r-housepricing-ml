@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 # Predict the house price
 **Statement** As a new Kaggler who just created his account a day ago, I am quite excited to hand in my
 first submission. Without any professional background in CS/Statistics, I have learned data mining, machine learning
@@ -121,8 +126,8 @@ Before implementing models, one should first split the training set of data into
 Personally I prefer to split it with the ratio of 6:4, ***But if someone can tell me what spliting ratio is proved to be scienticfic I will be really grateful***
 
 ```{r,message=FALSE, warning=FALSE}
-# Split the data into Training and Test Set # Ratio: 6:4 ###
-Training_Inner<- Training[1:floor(length(Training[,1])*0.6),]
+# Split the data into Training and Test Set # Ratio: 6:4 ### # Cambio a 0.8 (antes 0.6)
+Training_Inner<- Training[1:floor(length(Training[,1])*0.8),]
 Test_Inner<- Training[(length(Training_Inner[,1])+1):1460,]
 ```
 I will fit three regression models to the training set and choose the most suitable one by checking RMSE value.
@@ -218,10 +223,10 @@ Then I tune the parameters of xgboost model by building a 20-iteration for-loop.
 
 param <- list(objective = "reg:linear",
                   eval_metric = 'rmse',
-                  max.depth =10,
-                  eta = 0.01,
-                  subsample = 0.9,
-                  colsample_bytree = 0.5,
+                  max.depth =10, #10
+                  eta = 0.01, # 0.01
+                  subsample = 0.9, #0.9
+                  colsample_bytree = 0.5, #0.5
                   nthread = 10,
                   verbose = 1)
 
@@ -229,10 +234,11 @@ param <- list(objective = "reg:linear",
 
 watchlist <- list(eval = test_Data)
     
-xgb.model <- xgb.train(param, data = train_Data, watchlist, nrounds = 10000,
+xgb.model <- xgb.train(param, data = train_Data, watchlist, nrounds = 20000,
                            maximize = FALSE,
                            early_stopping_rounds = 5,
-                           print_every_n = 50)
+                           print_every_n = 100)
+best.iter <- xgb.model$best_iteration
 
 importance_matrix <- xgb.importance(colnames(train_Data), model = xgb.model)
 
@@ -273,10 +279,33 @@ Test[is.na(Test)]<-0
 Test.matrix <- as.matrix(Test, rownames.force=NA)
 Test_data <- xgb.DMatrix(data = Test.matrix[,2:76])
 
-predict.Test <- predict(xgb.model, Test_data)
+train.submis <- as.matrix(Training, rownames.force=NA)
+train.submis <- as(train.submis, "sparseMatrix")
+# Never forget to exclude objective variable in 'data option'
+train_Data.submis <- xgb.DMatrix(data = train.submis[,2:76], label = train.submis[,"SalePrice"])
+
+param <- list(objective = "reg:linear",
+                  eval_metric = 'rmse',
+                  max.depth =10,
+                  eta = 0.01,
+                  subsample = 0.9,
+                  colsample_bytree = 0.5,
+                  nthread = 10,
+                  verbose = 1)
+    
+xgb.model.submis <- xgb.train(param, data = train_Data.submis, nrounds = best.iter,
+                           print_every_n = 50)
+
+
+importance_matrix.submis <- xgb.importance(colnames(train_Data.submis), model = xgb.model.submis)
+
+xgb.plot.importance(importance_matrix.submis[1:20,], rel_to_first = TRUE, xlab = "Relative importance")
+
+
+predict.Test <- predict(xgb.model.submis, Test_data)
 
 submission <- data.frame(Id=Test$Id, SalePrice=predict.Test)
 
-write.csv(submission, file = 'Xgboost_model.csv', row.names = F)
+write.csv(submission, file = 'Xgboost_model Training.all.csv', row.names = F)
 
-```
+``` 
